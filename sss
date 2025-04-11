@@ -1,0 +1,123 @@
+# Correct the folder creation for Scrub Club Web Project and its subfolders
+scrub_club_client_path = scrub_club_path / "client/src"
+scrub_club_server_path = scrub_club_path / "server/routes"
+
+# Create required directories
+scrub_club_client_path.mkdir(parents=True, exist_ok=True)
+scrub_club_server_path.mkdir(parents=True, exist_ok=True)
+
+# Files for Scrub Club App
+(scrub_club_client_path / "App.js").write_text("""
+import React, { useState } from 'react';
+
+function CringeRater() {
+  const [post, setPost] = useState('');
+  const [result, setResult] = useState('');
+
+  const analyze = async () => {
+    const res = await fetch('/api/analyzePost', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ content: post })
+    });
+    const data = await res.json();
+    setResult(data);
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h2>Scrub Club</h2>
+      <textarea
+        rows={4}
+        value={post}
+        onChange={e => setPost(e.target.value)}
+        placeholder="Paste your old tweet or post here..."
+      />
+      <button onClick={analyze}>Rate My Cringe</button>
+      <pre>{result}</pre>
+    </div>
+  );
+}
+
+export default CringeRater;
+""")
+
+(scrub_club_path / "client/package.json").write_text("""
+{
+  "name": "scrub-club-client",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-scripts": "5.0.0"
+  }
+}
+""")
+
+(scrub_club_path / "server/routes/analyzePost.js").write_text("""
+const express = require('express');
+const { Configuration, OpenAIApi } = require("openai");
+
+const router = express.Router();
+const config = new Configuration({ apiKey: process.env.OPENAI_KEY });
+const openai = new OpenAIApi(config);
+
+router.post('/', async (req, res) => {
+  const { content } = req.body;
+  const prompt = `Rate this post for social embarrassment/cringe level (1-10): "${content}" and explain why.`;
+  const response = await openai.createChatCompletion({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: prompt }],
+  });
+  res.json(response.data.choices[0].message.content);
+});
+
+module.exports = router;
+""")
+
+(scrub_club_path / "server/server.js").write_text("""
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const passport = require('passport');
+const MongoClient = require('mongodb').MongoClient;
+
+const analyzePost = require('./routes/analyzePost');
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+app.use(session({ secret: 'supersecret', resave: false, saveUninitialized: true }));
+
+// API Routes
+app.use('/api/analyzePost', analyzePost);
+
+const port = 5000;
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+""")
+
+(scrub_club_path / "README.md").write_text("""
+# Scrub Club - Web App
+
+A web app where users can submit old social media posts, have them rated for cringe, and clean up their digital footprint.
+
+## Features:
+- Google OAuth login
+- OpenAI integration for post cringe analysis
+- MongoDB for storing user posts and cringe scores
+
+## Setup:
+1. Install dependencies: `npm install`
+2. Set up OpenAI API key and MongoDB URI in `.env`
+3. Run the app: `npm start`
+""")
+
+# Create new ZIPs for the corrected full scaffolding
+reflection_zip = shutil.make_archive(str(reflection_swap_path), 'zip', root_dir=reflection_swap_path)
+scrub_zip = shutil.make_archive(str(scrub_club_path), 'zip', root_dir=scrub_club_path)
+
+reflection_zip, scrub_zip
